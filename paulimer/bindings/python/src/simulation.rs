@@ -375,14 +375,33 @@ impl_simulation!(
         #[getter]
         #[must_use]
         pub fn symbolic_angles(&self) -> Vec<PySymbolicAngle> {
-            self.inner
-                .symbolic_angle_indicator()
+            let symbolic_angle_indicator = self.inner.symbolic_angle_indicator();
+            let mut random_bit = 0;
+            let mut angle_index = 0;
+            let angles = self
+                .inner
+                .random_outcome_indicator()
                 .iter()
                 .enumerate()
-                .filter(|(_, &is_angle)| is_angle)
-                .enumerate()
-                .map(|(index, (outcome, _))| PySymbolicAngle { outcome, index })
-                .collect()
+                .filter_map(|(outcome, &is_random)| {
+                    if !is_random {
+                        return None;
+                    }
+                    let is_angle = symbolic_angle_indicator[random_bit];
+                    random_bit += 1;
+                    if !is_angle {
+                        return None;
+                    }
+                    let angle = PySymbolicAngle {
+                        outcome,
+                        index: angle_index,
+                    };
+                    angle_index += 1;
+                    Some(angle)
+                })
+                .collect();
+            debug_assert_eq!(random_bit, symbolic_angle_indicator.len());
+            angles
         }
 
         /// Apply a symbolic Pauli exponent `e^{iα P}` parameterised by `angle`.

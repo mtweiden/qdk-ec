@@ -466,7 +466,10 @@ pub struct PhasedCircuitAction {
 ///
 /// # Errors
 ///
-/// Returns [`ActionError`] if action calculation fails.
+/// Returns [`ActionError::AuxiliaryQubitsEntangled`] if a non-output system qubit remains entangled,
+/// [`ActionError::AuxiliarySeparationFailed`] if `output_qubits` contains repeated entries or the
+/// transient auxiliary qubits cannot be separated, or [`ActionError::SimulationFailed`] if circuit
+/// simulation fails.
 pub fn phased_action_of(
     circuit: &Circuit,
     input_qubits: &[QubitId],
@@ -494,7 +497,8 @@ pub fn phased_action_of(
 /// # Errors
 ///
 /// Returns [`ActionError::AuxiliaryQubitsEntangled`] if the non-output system qubits remain
-/// entangled with the rest of the state.
+/// entangled with the rest of the state, or [`ActionError::AuxiliarySeparationFailed`] if
+/// `output_qubits` contains repeated entries or the transient auxiliary qubits cannot be separated.
 pub fn phased_action_from_simulation(
     simulation: &PhasedOutcomeCompleteSimulation,
     input_qubits: &[QubitId],
@@ -656,14 +660,11 @@ impl PhasedCircuitAction {
         &self,
         other: &PhasedCircuitAction,
     ) -> Result<(), Vec<ActionsInequivalenceReason>> {
-        let mut reasons = match self.is_equivalent(other) {
-            Ok(()) => Vec::new(),
-            Err(reasons) => reasons,
-        };
+        self.is_equivalent(other)?;
         if self.global_phase != other.global_phase {
-            reasons.push(ActionsInequivalenceReason::GlobalPhase);
+            return Err(vec![ActionsInequivalenceReason::GlobalPhase]);
         }
-        if reasons.is_empty() { Ok(()) } else { Err(reasons) }
+        Ok(())
     }
 
     /// Check if two phased actions are equivalent (up to a single global phase) when outcomes are

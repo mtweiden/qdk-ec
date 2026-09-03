@@ -22,7 +22,7 @@ use binar::{BitMatrix, Bitwise, BitwiseMut};
 
 use super::{
     Clifford, CliffordUnitary, PhasedCliffordUnitary, clifford_to_pauli_exponents, group_encoding_clifford_of,
-    standard_restriction_with_sign_matrix,
+    phased_clifford::StateAmplitudePhaseQuery, standard_restriction_with_sign_matrix,
 };
 use crate::DensePauli;
 use crate::pauli::Pauli;
@@ -291,7 +291,9 @@ fn encoded_basis_state(clifford: &PhasedCliffordUnitary, bits: &AlignedBitVec) -
 /// (the auxiliary qubits are entangled).
 fn separation_phase_at(
     encoder: &PhasedCliffordUnitary,
+    encoder_phase_query: &StateAmplitudePhaseQuery,
     blocks: &PhasedCliffordUnitary,
+    blocks_phase_query: &StateAmplitudePhaseQuery,
     basis_map: &AlignedBitMatrix,
     label: &AlignedBitVec,
 ) -> Option<u8> {
@@ -299,8 +301,9 @@ fn separation_phase_at(
     let block_labels = basis_map * &label.as_view();
     let block_state = encoded_basis_state(blocks, &block_labels);
     let representative = encoder_state.support_representative();
-    let encoder_phase = encoder_state.state_amplitude_phase_exponent(&representative)?;
-    let block_phase = block_state.state_amplitude_phase_exponent(&representative)?;
+    let encoder_phase =
+        encoder_state.state_amplitude_phase_exponent_with_query(&representative, encoder_phase_query)?;
+    let block_phase = block_state.state_amplitude_phase_exponent_with_query(&representative, blocks_phase_query)?;
     Some(u8::try_from((i64::from(encoder_phase) - i64::from(block_phase)).rem_euclid(8)).expect("modulo 8"))
 }
 
@@ -312,8 +315,18 @@ fn interpolate_phase(
     basis_map: &AlignedBitMatrix,
     num_qubits: usize,
 ) -> Result<SeparationPhase, AuxiliarySeparationError> {
+    let encoder_phase_query = encoder.state_amplitude_phase_query();
+    let blocks_phase_query = blocks.state_amplitude_phase_query();
     let phase_at = |label: &AlignedBitVec| {
-        separation_phase_at(encoder, blocks, basis_map, label).ok_or(AuxiliarySeparationError::AuxiliaryQubitsEntangled)
+        separation_phase_at(
+            encoder,
+            &encoder_phase_query,
+            blocks,
+            &blocks_phase_query,
+            basis_map,
+            label,
+        )
+        .ok_or(AuxiliarySeparationError::AuxiliaryQubitsEntangled)
     };
     let unit = |index: usize| {
         let mut label = AlignedBitVec::zeros(num_qubits);
