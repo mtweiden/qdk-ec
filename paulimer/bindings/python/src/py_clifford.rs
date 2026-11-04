@@ -1,3 +1,4 @@
+use binar::vec::Word;
 use derive_more::{Deref, DerefMut, From, Into};
 use paulimer::clifford::{
     clifford_fixed_space, clifford_to_pauli_exponents, clifford_to_transvections, clifford_to_transvections_minimal,
@@ -8,6 +9,7 @@ use paulimer::pauli::{as_sparse, DensePauli, SparsePauli};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyIterator, PySliceIndices};
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::enums::PyUnitaryOp;
 use crate::format_spec::parse_format_spec;
@@ -459,15 +461,22 @@ impl PyCliffordUnitary {
         self.inner != other.inner
     }
 
+    /// Do not mutate a Clifford while it is a dictionary key or set member.
+    fn __hash__(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.inner.hash(&mut hasher);
+        hasher.finish()
+    }
+
     /// Returns (words, phases) for efficient portable serialization
     #[must_use]
-    pub fn __getstate__(&self) -> (Vec<u64>, Vec<u8>) {
+    pub fn __getstate__(&self) -> (Vec<Word>, Vec<u8>) {
         let (words, phases) = self.inner.as_words();
         (words.to_vec(), phases.to_vec())
     }
 
     #[allow(clippy::needless_pass_by_value)]
-    pub fn __setstate__(&mut self, state: (Vec<u64>, Vec<u8>)) {
+    pub fn __setstate__(&mut self, state: (Vec<Word>, Vec<u8>)) {
         let (words, phases) = state;
         self.inner = CliffordUnitary::from_words(&words, phases);
     }
