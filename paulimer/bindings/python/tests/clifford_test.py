@@ -53,6 +53,16 @@ TWO_QUBIT_GATE_NAMES = [
 ]
 
 
+def test_cliffords_can_be_used_as_hash_keys():
+    identity = CliffordUnitary.identity(1)
+    signed = CliffordUnitary.from_name("Z", [0], 1)
+    equal = signed * signed
+    assert identity == equal
+    assert hash(identity) == hash(equal)
+    assert len({identity, equal, signed}) == 2
+    assert {identity: "identity", signed: "signed"}[equal] == "identity"
+
+
 def test_hadamard_from_preimages():
     pauli_x = DensePauli("X")
     pauli_z = DensePauli("Z")

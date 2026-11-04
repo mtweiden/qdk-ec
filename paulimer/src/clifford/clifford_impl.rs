@@ -19,7 +19,7 @@ use crate::traits::NeutralElement;
 use crate::{PauliGroup, Tuple2x2, Tuple4, Tuple4x2, Tuple8};
 use crate::{UnitaryOp, assert_1q_gate, assert_2q_gate};
 use binar::matrix::{AlignedBitMatrix, Column, complete_to_full_rank_row_basis};
-use binar::vec::{AlignedBitVec, AlignedBitView, AlignedBitViewMut};
+use binar::vec::{AlignedBitVec, AlignedBitView, AlignedBitViewMut, Word};
 use binar::{BitMatrix, IndexSet};
 use binar::{BitVec, Bitwise, BitwiseMut, BitwisePairMut};
 
@@ -2143,13 +2143,13 @@ impl CliffordUnitary {
     /// View the symplectic matrix as a flat slice of words (u64s) for efficient serialization.
     /// Returns (`matrix_words`, `phase_exponents`).
     #[must_use]
-    pub fn as_words(&self) -> (&[u64], &[u8]) {
+    pub fn as_words(&self) -> (&[Word], &[u8]) {
         (self.bits().as_words(), &self.preimage_phase_exponents)
     }
 
     /// Deserialize a Clifford from words (u64s).
     /// `column_count` is inferred from `phases.len()` / 2 (`phases.len()` = 2 * `num_qubits`, `column_count` = `num_qubits`).
-    pub fn from_words(words: &[u64], phases: Vec<u8>) -> Self {
+    pub fn from_words(words: &[Word], phases: Vec<u8>) -> Self {
         let cols = phases.len() / 2;
         let bits = AlignedBitMatrix::from_words(words, cols);
         Self {
